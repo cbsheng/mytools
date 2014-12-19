@@ -30,6 +30,30 @@ help_doc = '''
      > gzhulib -d 30
       书名：C语言接口与实现：创建可重用软件的技术
       还有8天过期
+
+     #查看个人借阅史
+     > gzhulib -his 20140901 20141219
+      借阅日期   索引号   书名
+      2014.09.27     J063/117           配色设计原理
+      2014.09.27     D095.654/8       社会契约论
+      2014.09.27     I565.65/25         荒谬的自由
+      ``````
+
+     #搜索书籍
+     > gzhulib -s python
+      易学Python
+      (澳) Anthony Briggs著; 王威, 袁国忠译
+      出版发行：北京: 人民邮电出版社, 2014
+      索书号：TP311.561/3
+      在馆数：2
+
+      Head First Python : 中文版
+      Paul Barry著; 林琪, 郭静等译
+      出版发行：北京: 中国电力出版社, 2012
+      索书号：TP311.56/246
+      在馆数：1
+
+      ``````
 '''
 
 class BookManager:
@@ -192,6 +216,9 @@ class BookManager:
             
 if __name__ == '__main__':
     argv = sys.argv[1:]
+    if '-h' in argv:
+        print help_doc
+        sys.exit(0)
     if '-u' in argv or '-p' in argv:
         if '-u' in argv and '-p' in argv:
             usernm = argv[argv.index('-u')+1] #拿到用户名
@@ -209,8 +236,6 @@ if __name__ == '__main__':
     bookmanager.login() 
     if '-a' in argv:
         bookmanager.all()
-    elif '-h' in argv:
-        print help_doc
     elif '-d' in argv:
         day = argv[argv.index('-d')+1] #拿到指定的天数
         bookmanager.check(int(day))
