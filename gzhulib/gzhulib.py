@@ -1,26 +1,35 @@
+#!/usr/bin/python
 #coding:utf-8
 
 import requests
 from BeautifulSoup import BeautifulSoup
 import re
 import sys
+try:
+    import mydebug
+    usernm = mydebug.usernm
+    passwd = mydebug.passwd
+except ImportError:
+    #本地使用可以直接写死这两个变量
+    usernm = None
+    passwd = None
 
-#本地使用可以直接写死这两个变量
-usernm = None
-passwd = None
-
-jelp_doc = '''
+help_doc = '''
   Example:
+     #指定用户密码登录，并获取整个借阅列表
      > gzhulib -u ***** -p ***** -a 
       C语言接口与实现：创建可重用软件的技术 20141227
       Python入门经典：以解决计算问题为导向的Python编程实践 20150110
       PHP动态网页设计 20150316
-      C程序性能优化：20个实验与达人技巧 20141229
-      Python网络编程基础 20141224
-      计算机网络 20150316
-      PHP语言精粹 20150316
+
+     #直接查看本地用户即将过期或已过期的书籍
      > gzhulib 
       没有即将过期的书籍
+     
+     #查看30天内有哪些书籍即将过期
+     > gzhulib -d 30
+      书名：C语言接口与实现：创建可重用软件的技术
+      还有8天过期
 '''
 
 class BookManager:
@@ -46,7 +55,7 @@ class BookManager:
             rsp = requests.post(self.login_url, para)
         except:
             print 'post操作发生错误'
-        
+
         if not rsp.ok:
             print 'http code is not 200'
             exit(0)
@@ -57,25 +66,26 @@ class BookManager:
         for item in table.findAll('tr')[1:]:
             td = item.findAll('td')
             num = pattern.search(td[7].text).group()
-            books[int(td[0].text)] = dict( name=td[1].text,
+            books[int(td[0].text)] = dict( name=td[1].text.encode('utf-8'),
                                            back_date=int(num))
         self.books = books
     
-    def check(self):
-        '''检查是否有书籍即将到期'''
+    def check(self, day=3):
+        '''检查是否有书籍即将过期或已过期'''
         books = self.books
         from datetime import date
         today = int(date.strftime(date.today(), '%Y%m%d'))
         flag = False
+        #import ipdb;ipdb.set_trace()
         for _, book in books.items():
-            if (today+ 3) >= book['back_date']:
+            if (today+ day) >= book['back_date']:
                 print "书名：%s "%book['name'] 
-                if today < book['book_date']:
-                    print "还有%天过期"%(book['back_date']-today)
-                elif today == book['book_date']:
+                if today < book['back_date']:
+                    print "还有%d天过期"%(book['back_date']-today)
+                elif today == book['back_date']:
                     print "今天过期"
                 else:
-                    print "已经超过%天"%(today-book['back_date'])
+                    print "已经超过%d天"%(today-book['back_date'])
                 flag = True
         if not flag:
             print "没有即将过期的书籍"
@@ -99,11 +109,14 @@ if __name__ == '__main__':
             print 'error operation. type "lib -h" for help'
             sys.exit(0)
     bookmanager = BookManager(usernm, passwd)
+    bookmanager.login()
     if '-a' in argv:
-        bookmanager.login()
         bookmanager.all()
     elif '-h' in argv:
         print help_doc
+    elif '-d' in argv:
+        day = argv[argv.index('-d')+1]
+        bookmanager.check(int(day))
     else:
         bookmanager.check()
     exit(0)
