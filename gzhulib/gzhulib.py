@@ -65,6 +65,7 @@ class BookManager:
         self.login_url = 'http://lib.gzhu.edu.cn/opac/LoginSystem.aspx'
         self.search_url= 'http://lib.gzhu.edu.cn:8080/bookle'
         self.readlog_url = 'http://lib.gzhu.edu.cn/opac/RdrLogRetr.aspx'
+        self.q = requests.Session()
 
     def get_hidden_cls(self, soup):
         '''获取html中所有class为hidden的键值对'''
@@ -73,20 +74,51 @@ class BookManager:
             para.update( { i.get('name') : i.get('value') } )
         return para
 
+    def http_get(self, promptstr, *l, **k):
+        '''封装requests中的get方法'''
+        try:
+            return self.q.get(*l, **k)
+        except requests.ConnectionError:
+            print '在%s时发生了连接错误'%promptstr
+            sys.exit(0)
+        except requests.Timeout:
+            print '在%s时发生了请求超时错误'%promptstr
+            sys.exit(0)
+        except requests.HTTPError:
+            print '在%s时发生了罕见的无效HTTP响应错误'%promptstr
+            sys.exit(0)
+        except:
+            print '发生未知错误'
+            sys.exit(0)
+
+    def http_post(self, promptstr, *l, **k):
+        '''封装requests中的get方法'''
+        try:
+            return self.q.post(*l, **k)
+        except requests.ConnectionError:
+            print '在%s时发生了连接错误'%promptstr
+            sys.exit(0)
+        except requests.Timeout:
+            print '在%s时发生了请求超时错误'%promptstr
+            sys.exit(0)
+        except requests.HTTPError:
+            print '在%s时发生了罕见的无效HTTP响应错误'%promptstr
+            sys.exit(0)
+        except:
+            print '发生未知错误'
+            sys.exit(0)
+        
+
     def login(self):
         '''登录帐号，获取图书页面'''
-        login_rsp  = requests.get(self.login_url)
+        login_rsp  = self.http_get('请求登录页面', self.login_url)
         login_html = login_rsp.text
         login_soup = BeautifulSoup(login_html)
         checknum = login_soup.find(id='labAppendix').text
 
         para = self.get_hidden_cls(login_soup)
         para.update({'UserName': self.usernm, 'Password':self.passwd, 'txtAppendix':checknum})
-        try:
-            rsp = requests.post(self.login_url, para) #登录
-            self.cookies = {'ASP.NET_SessionId' : rsp.request.headers['Cookie'][18:]}
-        except:
-            print 'http post操作发生错误'
+        rsp = self.http_post('用户登录图书馆网站', self.login_url, para) #登录
 
         if not rsp.ok:
             print 'http code is not 200'
@@ -107,21 +139,13 @@ class BookManager:
         if not start or not end:
             print '请指定查询时间'
             sys.exit(0)
-        try:
-            r = requests.get(self.readlog_url, cookies=self.cookies)
-        except:
-            print 'http get操作发生错误'
-            sys.exit(0)
+        r = self.http_get('获取个人借阅史页面', self.readlog_url)
 
         readlog_soup = BeautifulSoup(r.text)
         para = self.get_hidden_cls(readlog_soup)
         para.update(dict(txtBegDate=start, txtEndDate=end, btnRetr='查询'))
         
-        try:
-            rsp = requests.post(self.readlog_url, para, cookies=self.cookies)
-        except:
-            print 'http post发生错误'
-            sys.exit(0)
+        rsp = self.http_post('查询个人借阅史', self.readlog_url, para)
         readlog_soup = BeautifulSoup(rsp.text)
         table = readlog_soup.find(id='ItemsGrid')
         trs = table.findAll('tr')
@@ -175,11 +199,7 @@ class BookManager:
         page = 1 #索引页数
         while True:
             para.update(dict(searchPage=page))
-            try:
-                res = requests.get(self.search_url, params=para)
-            except:
-                print "http get操作发生错误"
-                sys.exit(0)
+            res = self.http_get('请求搜索结果页面', self.search_url, params=para)
 
             if not res.ok:
                 print 'http code is not 200'
@@ -208,6 +228,7 @@ class BookManager:
             comm = raw_input('输入 n查看下一页 q退出\n')
             if comm == 'n':
                 page += 1
+                print '-'*60
             elif comm == 'q':
                 sys.exit(0)
             else:
