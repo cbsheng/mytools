@@ -36,9 +36,18 @@ class BookManager:
     def __init__(self, usernm, passwd):
         self.usernm = usernm
         self.passwd = passwd
+        self.books = {}
+        self.cookies = None
         self.login_url = 'http://lib.gzhu.edu.cn/opac/LoginSystem.aspx'
         self.search_url= 'http://lib.gzhu.edu.cn:8080/bookle'
-        self.books = {}
+        self.readlog_url = 'http://lib.gzhu.edu.cn/opac/RdrLogRetr.aspx'
+
+    def get_hidden_cls(self, soup):
+        '''获取html中所有class为hidden的键值对'''
+        para = {}
+        for i in soup.findAll(type='hidden'):
+            para.update( { i.get('name') : i.get('value') } )
+        return para
 
     def login(self):
         '''登录帐号，获取图书页面'''
@@ -47,13 +56,11 @@ class BookManager:
         login_soup = BeautifulSoup(login_html)
         checknum = login_soup.find(id='labAppendix').text
 
-        para = {}
-        for i in login_soup.findAll(type='hidden'):
-            para.update( { i.get('name') : i.get('value') } )
-
+        para = self.get_hidden_cls(login_soup)
         para.update({'UserName': self.usernm, 'Password':self.passwd, 'txtAppendix':checknum})
         try:
-            rsp = requests.post(self.login_url, para)
+            rsp = requests.post(self.login_url, para) #登录
+            self.cookies = {'ASP.NET_SessionId' : rsp.request.headers['Cookie'][18:]}
         except:
             print 'http post操作发生错误'
 
@@ -71,13 +78,46 @@ class BookManager:
                                            back_date=int(num))
         self.books = books
     
+    def get_read_his(self, start=None, end=None):
+        '''获取指定时间的借书记录'''
+        if not start or not end:
+            print '请指定查询时间'
+            sys.exit(0)
+        try:
+            r = requests.get(self.readlog_url, cookies=self.cookies)
+        except:
+            print 'http get操作发生错误'
+            sys.exit(0)
+
+        readlog_soup = BeautifulSoup(r.text)
+        para = self.get_hidden_cls(readlog_soup)
+        para.update(dict(txtBegDate=start, txtEndDate=end, btnRetr='查询'))
+        
+        try:
+            rsp = requests.post(self.readlog_url, para, cookies=self.cookies)
+        except:
+            print 'http post发生错误'
+            sys.exit(0)
+        readlog_soup = BeautifulSoup(rsp.text)
+        table = readlog_soup.find(id='ItemsGrid')
+        trs = table.findAll('tr')
+        books_name = set()
+        print '  借阅日期\t   索引号\t   书名'
+        for tr in trs[1:]:
+            tds = tr.findAll('td')
+            name = tds[3].text
+            date = tds[2].text
+            index_num = tds[4].text
+            print '  %-14s %-13s\t   %-6s'%(date, index_num, name)
+            books_name.add(name)
+        print '  你一共借过%d本书' % len(books_name)
+
     def check(self, day=3):
         '''检查是否有书籍即将过期或已过期'''
         books = self.books
         from datetime import date
         today = int(date.strftime(date.today(), '%Y%m%d'))
         flag = False
-        #import ipdb;ipdb.set_trace()
         for _, book in books.items():
             if (today+ day) >= book['back_date']:
                 print "书名：%s "%book['name'] 
@@ -174,6 +214,10 @@ if __name__ == '__main__':
     elif '-d' in argv:
         day = argv[argv.index('-d')+1] #拿到指定的天数
         bookmanager.check(int(day))
+    elif '-his' in argv:
+        start = argv[argv.index('-his')+1] #时期日期
+        end = argv[argv.index('-his')+2]   #结束日期
+        bookmanager.get_read_his(start, end)
     else:
         bookmanager.check()
     exit(0)
