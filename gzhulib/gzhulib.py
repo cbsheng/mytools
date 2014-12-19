@@ -37,6 +37,7 @@ class BookManager:
         self.usernm = usernm
         self.passwd = passwd
         self.login_url = 'http://lib.gzhu.edu.cn/opac/LoginSystem.aspx'
+        self.search_url= 'http://lib.gzhu.edu.cn:8080/bookle'
         self.books = {}
 
     def login(self):
@@ -54,7 +55,7 @@ class BookManager:
         try:
             rsp = requests.post(self.login_url, para)
         except:
-            print 'post操作发生错误'
+            print 'http post操作发生错误'
 
         if not rsp.ok:
             print 'http code is not 200'
@@ -99,23 +100,79 @@ class BookManager:
                 print ' %d   %s'%(book['back_date'], book['name'])
             print
 
+    def search(self, name):
+        '''搜索书籍'''
+        para = dict(
+                    query=name,
+                    matchsPerPage=10, #一页显示条目数
+                    displayPages=15,  #总共显示多少页
+                    index='default',  #索引模式
+                    )
+        page = 1 #索引页数
+        while True:
+            para.update(dict(searchPage=page))
+            try:
+                res = requests.get(self.search_url, params=para)
+            except:
+                print "http get操作发生错误"
+                sys.exit(0)
+
+            if not res.ok:
+                print 'http code is not 200'
+                sys.exit(0)
+
+            book_soup = BeautifulSoup(res.text)
+            if book_soup.find(id='search_noresult'):
+                if page == 1:
+                    print '检索找不到和你的查询相符的内容'
+                else:
+                    print '已经没有更多的内容'
+                sys.exit(0)
+
+            book_infos = book_soup.findAll(attrs={'class':'book_info'}) #取得该页所有书籍信息
+            for book in book_infos:
+                #html中每个book_info类都有两个h4标签
+                h1 = book.findAll('h4')[0]
+                h2 = book.findAll('h4')[1]
+                publish = h1.text.split('\r\n')[0]   #出版社
+                index_num = h2.text.split('\r\n')[0] #索书号
+                have = h2.text.split('\r\n')[2][20:] #在馆数
+                book_name = book.a.text #书名
+                author = book.span.text #作者
+                print '%s\n%s\n%s\n%s\n%s\n'%(book_name, author, publish, index_num, have)
+
+            comm = raw_input('输入 n查看下一页 q退出\n')
+            if comm == 'n':
+                page += 1
+            elif comm == 'q':
+                sys.exit(0)
+            else:
+                print '非法操作'
+                break
+            
 if __name__ == '__main__':
     argv = sys.argv[1:]
     if '-u' in argv or '-p' in argv:
         if '-u' in argv and '-p' in argv:
-            usernm = argv[argv.index('-u')+1]
-            passwd = argv[argv.index('-p')+1]
+            usernm = argv[argv.index('-u')+1] #拿到用户名
+            passwd = argv[argv.index('-p')+1] #拿到密码
         else:
             print 'error operation. type "lib -h" for help'
             sys.exit(0)
     bookmanager = BookManager(usernm, passwd)
-    bookmanager.login()
+
+    if '-s' in argv:
+        name = argv[argv.index('-s')+1] #拿到搜索内容
+        bookmanager.search(name)
+        sys.exit(0)
+
+    bookmanager.login() 
     if '-a' in argv:
         bookmanager.all()
     elif '-h' in argv:
         print help_doc
     elif '-d' in argv:
-        day = argv[argv.index('-d')+1]
+        day = argv[argv.index('-d')+1] #拿到指定的天数
         bookmanager.check(int(day))
     else:
         bookmanager.check()
