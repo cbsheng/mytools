@@ -66,6 +66,7 @@ class BookManager:
         self.search_url= 'http://lib.gzhu.edu.cn:8080/bookle'
         self.readlog_url = 'http://lib.gzhu.edu.cn/opac/RdrLogRetr.aspx'
         self.q = requests.Session()
+        self.fmt = '%Y%m%d'
 
     def get_hidden_cls(self, soup):
         '''获取html中所有class为hidden的键值对'''
@@ -129,9 +130,10 @@ class BookManager:
         books = {}
         for item in table.findAll('tr')[1:]:
             td = item.findAll('td')
-            num = pattern.search(td[7].text).group()
-            books[int(td[0].text)] = dict( name=td[1].text.encode('utf-8'),
-                                           back_date=int(num))
+            num = pattern.search(td[7].text).group().encode('utf-8') #归还日期的形式有可能是 *201501201  带星号的
+            books[int(td[0].text)] = dict( name=td[1].text.encode('utf-8'), #书名
+                                           back_date=num                    #归还日期
+                                         ) 
         self.books = books
     
     def get_read_his(self, start=None, end=None):
@@ -144,8 +146,8 @@ class BookManager:
         readlog_soup = BeautifulSoup(r.text)
         para = self.get_hidden_cls(readlog_soup)
         para.update(dict(txtBegDate=start, txtEndDate=end, btnRetr='查询'))
-        
         rsp = self.http_post('查询个人借阅史', self.readlog_url, para)
+
         readlog_soup = BeautifulSoup(rsp.text)
         table = readlog_soup.find(id='ItemsGrid')
         trs = table.findAll('tr')
@@ -162,21 +164,24 @@ class BookManager:
 
     def check(self, day=3):
         '''检查是否有书籍即将过期或已过期'''
+        from datetime import datetime, date, timedelta
         books = self.books
-        from datetime import date
-        today = int(date.strftime(date.today(), '%Y%m%d'))
-        flag = False
+        day = timedelta(days=day)
+        t = date.strftime(date.today(), self.fmt)
+        today = datetime.strptime(t, self.fmt)
+        not_book_need_return = True
         for _, book in books.items():
-            if (today+ day) >= book['back_date']:
+            back_date = datetime.strptime(book['back_date'], self.fmt)
+            if (today+ day) >= back_date:
+                not_book_need_return = False
                 print "书名：%s "%book['name'] 
-                if today < book['back_date']:
-                    print "还有%d天过期"%(book['back_date']-today)
-                elif today == book['back_date']:
+                if today < back_date:
+                    print "还有%d天过期"%((back_date-today).days)
+                elif today == back_date:
                     print "今天过期"
                 else:
-                    print "已经超过%d天"%(today-book['back_date'])
-                flag = True
-        if not flag:
+                    print "已经超过%d天"%((today-back_date).days)
+        if not_book_need_return:
             print "没有即将过期的书籍"
 
     def all(self):
@@ -185,7 +190,7 @@ class BookManager:
         if books:
             print '\n 归还日期   书名'
             for _, book in books.items():
-                print ' %d   %s'%(book['back_date'], book['name'])
+                print ' %s   %s'%(book['back_date'], book['name'])
             print
 
     def search(self, name):
