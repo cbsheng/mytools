@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #pyMail出处：https://github.com/paramiao/pyMail
+#本文件有对 pyMail 进行自用性的修改
 
 import imaplib, email
 import sys

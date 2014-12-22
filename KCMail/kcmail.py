@@ -47,7 +47,6 @@ def download(data, fpath, fname, folder, option=None):
 
 def zip_(path, zip_name):
     print '压缩文件夹%s 里的所有文件'%folder
-    import ipdb;ipdb.set_trace()
     f = zipfile.ZipFile(path +'/' + zip_name + '.zip', 'w', zipfile.ZIP_DEFLATED)
     for _, _, filenames in os.walk(path):
         for filename in filenames:
