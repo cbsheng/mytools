@@ -31,7 +31,7 @@ class ReceiveMailDealer:
     def login(self, username, password, server):
         try:
             self.mail = imaplib.IMAP4_SSL(server, 993)
-            print self.mail.login(username, password)
+            print '用户 %s 登录信息: '%username, self.mail.login(username, password)
             self.mail.select('INBOX')
         except imaplib.IMAP4.error:
             traceback.print_exc()
