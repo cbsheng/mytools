@@ -14,14 +14,26 @@ try:
 except ImportError:
     usernm = passwd = qq = fpath = server = None
 
+def check_rename(abs_path_fname):
+    '''检查文件是否已存在'''
+    if os.path.exists(abs_path_fname):
+        fname = os.path.basename(abs_path_fname)
+        fpath = os.path.dirname(abs_path_fname)
+        new_fname = 'new_' + fname
+        print '%s 已经存在，将自动改名为 %s'%(fname, new_fname)
+        return os.path.join(fpath, new_fname)
+    return abs_path_fname
+
 def unzip(fname):
     '''解压 zip 文件'''
     basename = os.path.basename(fname)
+    dirname = os.path.dirname(fname)
     zobj = zipfile.ZipFile(fname)
     print '###开始解压文件.......... %s'%basename
     for name in zobj.namelist():
         if not name.startswith('__MACOSX'):  #‘__MACOSX’为 mac 下压缩文件特有的
-            f = open(os.path.join(os.path.dirname(fname), name), 'wb' )
+            abs_path_fname = check_rename(os.path.join(dirname, name))
+            f = open(abs_path_fname, 'wb' )
             f.write(zobj.read(name))
             print '下载文件......%s成功'%name
             f.close()
@@ -49,10 +61,10 @@ def download(data, filepath, filename, option=None):
         sys.exit(0)
 
     downloadfile = os.path.join(filepath, filename)
+    downloadfile = check_rename(downloadfile)
     if option == filetype.ZIP:
         #压缩文件
         
-        #f = open(fpath + folder + '/' + fname, 'wb')
         f = open(downloadfile, 'wb')
         f.write(data) #暂存压缩文件
         f.close()
