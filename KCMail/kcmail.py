@@ -109,6 +109,7 @@ if __name__ == '__main__':
         folder = 'new_folder'
     if not fpath:
         fpath = './'
+    abs_path = os.path.join(fpath, folder)
 
     if os.path.exists(folder + '/'):
         print '文件夹%s已存在!!!!'%folder
@@ -137,25 +138,43 @@ if __name__ == '__main__':
     else:
         download_nums = download_nums.split(' ')
     if download_nums:
+        subjects = set() #记录所有下载邮件的标题
         print '\n你选择的邮件编号有： ', [num for num in download_nums]
         for num in download_nums:
             if num in nums:
+                subjects.add(datas[num]['subject'])
                 attachments = datas[num]['attachments'] #取到该邮件的所有附件
                 for atta in attachments:
                     filename = atta['name']
                     data = atta['data']
-                    filepath = os.path.join(fpath, folder)
                     if filename.endswith('.zip'):
                         #如果是压缩文件
-                        download(data, filepath, filename, option=filetype.ZIP)
+                        download(data, abs_path, filename, option=filetype.ZIP)
                     #elif fname.endswith('.rar'):
                     #    download(data, fpath, fname, option=filetype.RAR)
                     else:
                         #如果是普通文件
-                        download(data, filepath, filename, option=filetype.NORMAL)
+                        download(data, abs_path, filename, option=filetype.NORMAL)
         print '所有邮件里的附件下载完成\n'
     else:
         print '输入为空，自动退出'
         sys.exit(0)
 
     zip_(fpath + folder, folder)
+
+    #生成一个 readme 文件记录下载了哪些邮件的附件
+    readme = os.path.join(abs_path, 'readme.txt')
+    if not os.path.exists(readme):
+        f = open(readme, 'wb')
+        f.write(' '.join(list(subjects)))
+    else:
+        f = open(readme, 'rb+')
+        content_l =f.readline().split(' ')
+        for subject in subjects:
+            if subject in content_l:
+                subjects.remove(subject)
+        if subjects:
+            f.seek(0,2) #文件位置指针移到最后
+            f.write(' ' + ' '.join(list(subjects)))
+    f.close()
+        
