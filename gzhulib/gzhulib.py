@@ -152,13 +152,13 @@ class BookManager:
         table = readlog_soup.find(id='ItemsGrid')
         trs = table.findAll('tr')
         books_name = set()
-        print '  借阅日期\t   索引号\t   书名'
+        print '  借阅日期\t   索引号\t\t   书名'
         for tr in trs[1:]:
             tds = tr.findAll('td')
             name = tds[3].text
             date = tds[2].text
             index_num = tds[4].text
-            print '  %-14s %-13s\t   %-6s'%(date, index_num, name)
+            print '  %-14s %-20s\t   %-15s'%(date, index_num, name)
             books_name.add(name)
         print '  你一共借过%d本书' % len(books_name)
 
