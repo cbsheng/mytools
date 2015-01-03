@@ -162,7 +162,7 @@ class BookManager:
             books_name.add(name)
         print '  你一共借过%d本书' % len(books_name)
 
-    def check(self, day=3):
+    def check(self, day=30):
         '''检查是否有书籍即将过期或已过期'''
         from datetime import datetime, date, timedelta
         books = self.books
