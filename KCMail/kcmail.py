@@ -28,16 +28,15 @@ if __name__ == '__main__':
 
     folder = raw_input('输入新文件夹名(默认名为new_folder)')
     fpath = raw_input('输入新文件夹存放路径(默认当前目录)')
-    if not folder:
-        folder = 'new_folder'
-    if not fpath:
-        fpath = './'
-    abs_path = os.path.join(fpath, folder)
+    if not folder: folder = 'new_folder'
+    if not fpath: fpath = './'
+    abs_path = os.path.join(fpath, folder) #绝对路径 
 
-    if os.path.exists(folder + '/'):
+    try:
+        os.mkdir(folder)
+    except OSError:
         print '文件夹%s已存在!!!!'%folder
         sys.exit(0)
-    os.mkdir(folder)
 
     mailmanger = ReceiveMailDealer(usernm, passwd, server_imap)
 
@@ -52,14 +51,14 @@ if __name__ == '__main__':
         #加载所有未读邮件信息
         data = mailmanger.getMailInfo(num)
         datas.update({num : data})
-        print '编号: %s  标题: %s  发件人: %s  附件个数: %d'%(num, datas[num]['subject'], datas[num]['from'][0], len(datas[num]['attachments']))
+        print '编号: %s  标题: %s  发件人: %s  附件个数: %d' % ( num, datas[num]['subject'], 
+                                                                 datas[num]['from'][0], 
+                                                                 len(datas[num]['attachments']) )
         all_nums.append(num)
 
     download_nums = raw_input('输入邮件编号(直接回车全选)')
-    if not download_nums:
-        download_nums = all_nums
-    else:
-        download_nums = download_nums.split(' ')
+    download_nums = all_nums if not download_nums else download_nums.split(' ')
+
     if download_nums:
         subjects = set() #记录所有下载邮件的标题
         print '\n你选择的邮件编号有： ', [num for num in download_nums]
@@ -85,7 +84,7 @@ if __name__ == '__main__':
 
     zip_(fpath + folder, folder)
 
-    #生成一个 readme 文件记录下载了哪些邮件的附件
+    #生成一个 readme 文件记录下载了哪些邮件的附件(记录有哪些宿舍)
     readme = os.path.join(abs_path, 'readme.txt')
     if not os.path.exists(readme):
         f = open(readme, 'wb')
