@@ -1,6 +1,6 @@
 #coding:utf-8
 
-from pyMail import  ReceiveMailDealer
+from pyMail import  ReceiveMailDealer, SendMailDealer
 import sys
 import os
 import zipfile, rarfile
@@ -9,10 +9,23 @@ try:
     import debug
     usernm = debug.usernm
     passwd = debug.passwd
-    server = debug.wangyi
+    server_imap = debug.wangyi_imap
+    server_smtp= debug.wangyi_smtp
     fpath = debug.fpath
+    stmp_port = debug.stmp_port
 except ImportError:
-    usernm = passwd = qq = fpath = server = None
+    usernm = passwd = qq = fpath = server_imap = server_smtp = stmp_port = None
+
+def send_mail_by_zipfile(receiveuser, zip_file, username=usernm, password=passwd, server=server_smtp, port=stmp_port):
+    smailManager = SendMailDealer(username, password, server, port)
+    subject = raw_input('请输入邮件标题(默认为压缩文件的名字):  ')
+    text = raw_input('请输入邮件内容: ')
+    if not subject:
+        subject = os.path.basename(zip_file)[:-4]
+    if not text:
+        text = ''
+    smailManager.setMailInfo(receiveuser, subject, text, 'html', zip_file)
+    smailManager.sendMail()
 
 def check_rename(abs_path_fname):
     '''检查文件是否已存在'''
@@ -103,6 +116,13 @@ class filetype():
 
 if __name__ == '__main__':
 
+    argv = os.sys.argv[1:]
+    if '-u' in argv:
+        '暂时使用'
+        import getpass
+        usernm= raw_input('请输入你的邮箱帐号: ')
+        passwd= getpass.getpass(prompt='请输入你的邮箱密码: ')
+
     folder = raw_input('输入新文件夹名(默认名为new_folder)')
     fpath = raw_input('输入新文件夹存放路径(默认当前目录)')
     if not folder:
@@ -116,7 +136,7 @@ if __name__ == '__main__':
         sys.exit(0)
     os.mkdir(folder)
 
-    mailmanger = ReceiveMailDealer(usernm, passwd, server)
+    mailmanger = ReceiveMailDealer(usernm, passwd, server_imap)
 
     t, nums = mailmanger.getUnread()
     nums = nums[0].split(' ')
@@ -177,4 +197,8 @@ if __name__ == '__main__':
             f.seek(0,2) #文件位置指针移到最后
             f.write(' ' + ' '.join(list(subjects)))
     f.close()
-        
+
+    #将压缩文件作为附件发送
+    if not raw_input('是否发送邮件?(直接回车确认,任意输入则取消发送邮件)'):
+        receiveuser = raw_input('请输入接受方邮箱: ')
+        send_mail_by_zipfile(receiveuser, os.path.join(fpath + folder, folder + '.zip'))
