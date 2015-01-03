@@ -1,5 +1,7 @@
 因为本人在校时借阅图书比较多，每次手动登录查看书籍的归还日期过于麻烦，所以写了**gzhulib**这个脚本用于检查自己的借阅情况。
 
+详细介绍[博文地址](http://cbsheng.github.io/2015/01/03/-python-%E6%8A%93%E5%8F%96%E4%B8%AA%E4%BA%BA%E5%9B%BE%E4%B9%A6%E9%A6%86%E4%BF%A1%E6%81%AF%E8%84%9A%E6%9C%AC-gzhulib/)
+
 ---
 
 ###TODO
