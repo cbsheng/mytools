@@ -53,6 +53,9 @@ help_doc = '''
       索书号：TP311.56/246
       在馆数：1
 
+     #荐购书籍
+     > gzhulib -n [豆瓣书籍url中的id号]
+
       ``````
 '''
 
@@ -65,6 +68,7 @@ class BookManager:
         self.login_url = 'http://lib.gzhu.edu.cn/opac/LoginSystem.aspx'
         self.search_url= 'http://lib.gzhu.edu.cn:8080/bookle'
         self.readlog_url = 'http://lib.gzhu.edu.cn/opac/RdrLogRetr.aspx'
+        self.douban_book_api = 'https://api.douban.com/v2/book/'
         self.q = requests.Session()
         self.fmt = '%Y%m%d'
 
@@ -109,6 +113,36 @@ class BookManager:
             print '发生未知错误'
             sys.exit(0)
         
+    def recommend(self, douban_book_id):
+        '''登录荐购书籍网站荐购书籍并保存'''
+        self.recommend_login_url = 'http://lib.gzhu.edu.cn:8080/BookRecommend/recommend/login' #荐购网站登录 
+        self.recommend_new_book_url = 'http://lib.gzhu.edu.cn:8080/BookRecommend/recommend/bibliography' #荐购信息页面
+        self.recommend_url = 'http://lib.gzhu.edu.cn:8080/BookRecommend/recommend/saveRecommend' #荐购信息内容保存 url
+        pattern = re.compile('\d+.*\d+')
+        para = {'userName':self.usernm, 'password':self.passwd}
+        douban_book = self.http_get('向豆瓣请求书籍信息', self.douban_book_api+douban_book_id)
+        if not douban_book.ok:
+            print '豆瓣书籍的 id 有错误，请核实后再试'
+            sys.exit(0)
+        book_info = douban_book.json()
+        book_form_data = {
+                          'title' : book_info['title'],
+                          'author': ','.join(book_info['author']),
+                          'publisher' : book_info['publisher'],
+                          'ISBN' : book_info['isbn13'],
+                          'price' : pattern.findall(book_info['price'])[0],
+                          'description' : book_info['summary']
+                }
+        self.http_post('请求荐购登录页面', self.recommend_login_url, para)
+        return_msg = self.http_post('请求荐购书籍信息填写页面', self.recommend_new_book_url, data=book_form_data)
+        print return_msg.text
+        import json
+        msg = json.loads(return_msg.text)
+        if 'id' in msg:
+            reason = raw_input('请输入荐购的理由\n')
+            if reason:
+                para.update({'descripton' : reason, 'biblio_id' : msg['id']})
+                print self.http_post('在荐购页面填写书籍荐购理由', self.recommend_url, data=para).text
 
     def login(self):
         '''登录帐号，获取图书页面'''
@@ -253,6 +287,12 @@ if __name__ == '__main__':
             print 'error operation. type "lib -h" for help'
             sys.exit(0)
     bookmanager = BookManager(usernm, passwd)
+
+    if '-n' in argv:
+        #新增荐购并保存 
+        douban_book_id = argv[argv.index('-n')+1]
+        bookmanager.recommend(douban_book_id)
+        sys.exit(0)
 
     if '-s' in argv:
         name = argv[argv.index('-s')+1] #拿到搜索内容
